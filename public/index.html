@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List API</title>
+  <script>
+    let token = ''; 
+
+    async function registerUser() {
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-password').value;
+
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Ошибка при регистрации');
+    }
+
+    async function loginUser() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+
+      if (result.token) {
+        token = result.token;
+        alert('Вход выполнен');
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('tasks-section').style.display = 'block';
+        fetchTasks();
+      } else {
+        alert(result.error || 'Ошибка при входе');
+      }
+    }
+
+    async function createTask() {
+      const title = document.getElementById('task-title').value;
+      const description = document.getElementById('task-desc').value;
+      const dueDate = document.getElementById('task-due-date').value;
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ title, description, dueDate }),
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Задача создана');
+      fetchTasks();
+    }
+
+    async function fetchTasks() {
+      const response = await fetch('/api/tasks', {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+
+      const tasks = await response.json();
+      const tasksList = document.getElementById('tasks-list');
+      tasksList.innerHTML = '';
+
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.innerText = `${task.title} - ${task.description} (Выполнено: ${task.status ? 'Да' : 'Нет'})`;
+
+       
+        const completeButton = document.createElement('button');
+        completeButton.innerText = 'Выполнить';
+        completeButton.onclick = () => completeTask(task.id);
+
+   
+        const editButton = document.createElement('button');
+        editButton.innerText = 'Редактировать';
+        editButton.onclick = () => editTask(task.id);
+
+       
+        const deleteButton = document.createElement('button');
+        deleteButton.innerText = 'Удалить';
+        deleteButton.onclick = () => deleteTask(task.id);
+
+        li.appendChild(completeButton);
+        li.appendChild(editButton);
+        li.appendChild(deleteButton);
+        tasksList.appendChild(li);
+      });
+    }
+
+    async function completeTask(taskId) {
+      const response = await fetch(`/api/tasks/${taskId}/complete`, {
+        method: 'PATCH',
+        params:{
+          id: taskId,
+        },
+        headers: {
+          'Authorization': 'Bearer ' + token
+        },
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Не удалось выполнить задачу');
+      fetchTasks();
+    }
+
+    async function editTask(taskId) {
+      const title = prompt('Введите новое название задачи:');
+      const description = prompt('Введите новое описание задачи:');
+      const dueDate = prompt('Введите новую дату выполнения (YYYY-MM-DD):');
+      const status = confirm('Задача выполнена?');
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        params:{
+          id: taskId,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ title, description, dueDate, status }),
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Не удалось обновить задачу');
+      fetchTasks();
+    }
+
+    async function deleteTask(taskId) {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        params:{
+          id: taskId,
+        },
+        headers: {
+          'Authorization': 'Bearer ' + token
+        },
+      });
+
+      const result = await response.json();
+      alert(result.message || `Не удалось удалитьaaa задачу`);
+      fetchTasks();
+    }
+  </script>
+</head>
+<body>
+
+  <h1>To-Do List API</h1>
+
+  <!-- Раздел для регистрации и авторизации -->
+  <div id="auth-section">
+    <h2>Регистрация</h2>
+    <input type="email" id="reg-email" placeholder="Email">
+    <input type="password" id="reg-password" placeholder="Пароль">
+    <button onclick="registerUser()">Зарегистрироваться</button>
+
+    <h2>Вход</h2>
+    <input type="email" id="login-email" placeholder="Email">
+    <input type="password" id="login-password" placeholder="Пароль">
+    <button onclick="loginUser()">Войти</button>
+  </div>
+
+  <!-- Раздел для управления задачами -->
+  <div id="tasks-section" style="display:none;">
+    <h2>Создание задачи</h2>
+    <input type="text" id="task-title" placeholder="Название задачи">
+    <textarea id="task-desc" placeholder="Описание задачи"></textarea>
+    <input type="date" id="task-due-date">
+    <button onclick="createTask()">Создать задачу</button>
+
+    <h2>Ваши задачи</h2>
+    <ul id="tasks-list"></ul>
+  </div>
+
+</body>
+</html>
